@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	// "./pokeapi"
 )
 
 type cliCommand struct {
