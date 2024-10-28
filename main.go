@@ -2,44 +2,44 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"sort"
+	"time"
+
+	"github.com/amstein4920/pokedexcli/pokeapi"
 )
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*config) error
 }
 
-type PokeLocations struct {
-	Count    int     `json:"count"`
-	Next     *string `json:"next"`
-	Previous *string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
+type config struct {
+	pokeClient          pokeapi.Client
+	nextLocationUrl     *string
+	previousLocationUrl *string
 }
-
-// type config struct {
-// pokeClient pokeapi.Client
-
-// }
 
 func main() {
+	pokeClient := pokeapi.NewClient(5 * time.Second)
+	cfg := &config{
+		pokeClient: pokeClient,
+	}
+
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan()
 		input := scanner.Text()
-		err := getCommands()[input].callback()
-		if err != nil {
-			fmt.Printf("error with callback: %v", err)
+		command, exists := getCommands()[input]
+		if exists {
+			err := command.callback(cfg)
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}
 }
@@ -69,7 +69,7 @@ func getCommands() map[string]cliCommand {
 	}
 }
 
-func commandHelp() error {
+func commandHelp(config *config) error {
 	var commandsSorted []cliCommand
 
 	fmt.Println("Welcome to the Pokedex!")
@@ -87,39 +87,39 @@ func commandHelp() error {
 	return nil
 }
 
-func commandExit() error {
+func commandExit(config *config) error {
 	os.Exit(0)
 	return nil
 }
 
-func commandMap() error {
-	fmt.Println("Next")
-	res, err := http.Get("https://pokeapi.co/api/v2/location/")
+func commandMap(config *config) error {
+	locations, err := config.pokeClient.ListLocations(config.nextLocationUrl)
 	if err != nil {
-		fmt.Println("Error loading locations")
 		return err
 	}
+	config.nextLocationUrl = locations.Next
+	config.previousLocationUrl = locations.Previous
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println("Error reading locations")
-		return err
-	}
-	defer res.Body.Close()
-
-	locations := PokeLocations{}
-	err = json.Unmarshal(body, &locations)
-	if err != nil {
-		fmt.Println("Error with locations JSON")
-		return err
-	}
 	for _, location := range locations.Results {
 		fmt.Println(location.Name)
 	}
 	return nil
 }
 
-func commandMapB() error {
-	fmt.Println("Previous")
+func commandMapB(config *config) error {
+	locations, err := config.pokeClient.ListLocations(config.previousLocationUrl)
+	if err != nil {
+		return err
+	}
+	config.nextLocationUrl = locations.Next
+	config.previousLocationUrl = locations.Previous
+
+	if config.previousLocationUrl == nil {
+		return errors.New("first page, can not go back further")
+	}
+
+	for _, location := range locations.Results {
+		fmt.Println(location.Name)
+	}
 	return nil
 }
