@@ -2,9 +2,13 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"sort"
+	// "./pokeapi"
 )
 
 type cliCommand struct {
@@ -12,6 +16,21 @@ type cliCommand struct {
 	description string
 	callback    func() error
 }
+
+type PokeLocations struct {
+	Count    int     `json:"count"`
+	Next     *string `json:"next"`
+	Previous *string `json:"previous"`
+	Results  []struct {
+		Name string `json:"name"`
+		URL  string `json:"url"`
+	} `json:"results"`
+}
+
+// type config struct {
+// pokeClient pokeapi.Client
+
+// }
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -76,6 +95,28 @@ func commandExit() error {
 
 func commandMap() error {
 	fmt.Println("Next")
+	res, err := http.Get("https://pokeapi.co/api/v2/location/")
+	if err != nil {
+		fmt.Println("Error loading locations")
+		return err
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println("Error reading locations")
+		return err
+	}
+	defer res.Body.Close()
+
+	locations := PokeLocations{}
+	err = json.Unmarshal(body, &locations)
+	if err != nil {
+		fmt.Println("Error with locations JSON")
+		return err
+	}
+	for _, location := range locations.Results {
+		fmt.Println(location.Name)
+	}
 	return nil
 }
 
