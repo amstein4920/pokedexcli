@@ -22,6 +22,19 @@ func (c *Client) ListLocations(nextUrl *string) (PokeLocations, error) {
 	if nextUrl != nil {
 		url = *nextUrl
 	}
+
+	val, ok := c.cache.Get(url)
+	if ok {
+		locations := PokeLocations{}
+		err := json.Unmarshal(val, &locations)
+		if err != nil {
+			fmt.Println("Error with cached locations JSON")
+			return PokeLocations{}, err
+		}
+
+		return locations, nil
+	}
+
 	res, err := http.Get(url)
 	if err != nil {
 		fmt.Println("Error loading locations")
