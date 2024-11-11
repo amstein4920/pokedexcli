@@ -54,5 +54,44 @@ func (c *Client) ListLocations(nextUrl *string) (PokeLocations, error) {
 		fmt.Println("Error with locations JSON")
 		return PokeLocations{}, err
 	}
+
+	c.cache.Add(url, body)
 	return locations, nil
+}
+
+func (c *Client) ExploreLocation(locationName string) (Location, error) {
+	url := baseURL + "/location-area/" + locationName
+
+	val, ok := c.cache.Get(url)
+	if ok {
+		location := Location{}
+		err := json.Unmarshal(val, &location)
+		if err != nil {
+			fmt.Println("Error with location JSON")
+			return Location{}, err
+		}
+		return location, nil
+	}
+
+	res, err := http.Get(url)
+	if err != nil {
+		fmt.Println("Error loading location area")
+		return Location{}, err
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println("Error reading location area")
+		return Location{}, err
+	}
+	defer res.Body.Close()
+
+	location := Location{}
+	err = json.Unmarshal(body, &location)
+	if err != nil {
+		fmt.Println("Error with location JSON")
+		return Location{}, err
+	}
+	c.cache.Add(url, body)
+	return location, nil
 }
