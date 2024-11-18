@@ -92,6 +92,11 @@ func getCommands() map[string]cliCommand {
 			description: "Show information for the given Pokemon if the Pokemon has been previously caught",
 			callback:    commandInspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Show names of all caught Pokemon",
+			callback:    commandPokedex,
+		},
 	}
 }
 
@@ -104,7 +109,7 @@ func commandHelp(config *config, args ...string) error {
 		commandsSorted = append(commandsSorted, value)
 	}
 	sort.Slice(commandsSorted, func(i, j int) bool {
-		return i < j
+		return commandsSorted[i].name < commandsSorted[j].name
 	})
 
 	for _, command := range commandsSorted {
@@ -219,4 +224,17 @@ func printInfo(pokemon pokeapi.Pokemon) {
 	for _, val := range pokemon.Types {
 		fmt.Println("-" + val.Type.Name)
 	}
+}
+
+func commandPokedex(config *config, args ...string) error {
+	if len(config.caughtPokemon) < 1 {
+		fmt.Println("Pokedex is Empty")
+		return nil
+	}
+
+	fmt.Println("Your Pokedex:")
+	for _, pokemon := range config.caughtPokemon {
+		fmt.Println("-" + pokemon.Name)
+	}
+	return nil
 }
