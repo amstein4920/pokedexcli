@@ -87,6 +87,11 @@ func getCommands() map[string]cliCommand {
 			description: "Attempt to catch given Pokemon and add to your personal Pokedex",
 			callback:    commandCatch,
 		},
+		"inspect": {
+			name:        "inspect",
+			description: "Show information for the given Pokemon if the Pokemon has been previously caught",
+			callback:    commandInspect,
+		},
 	}
 }
 
@@ -164,7 +169,7 @@ func commandExplore(config *config, args ...string) error {
 
 func commandCatch(config *config, args ...string) error {
 	if len(args) != 1 {
-		return errors.New("no pokemon argument provided")
+		return errors.New("incorrect number of arguments provided")
 	}
 
 	pokemon, err := config.pokeClient.GetPokemon(args[0])
@@ -183,4 +188,35 @@ func commandCatch(config *config, args ...string) error {
 	}
 
 	return nil
+}
+
+func commandInspect(config *config, args ...string) error {
+	if len(args) != 1 {
+		return errors.New("incorrect number of arguments provided")
+	}
+
+	pokemon, ok := config.caughtPokemon[args[0]]
+	if !ok {
+		fmt.Println("Pokemon provided has not been caught")
+		return nil
+	}
+
+	printInfo(pokemon)
+	return nil
+}
+
+func printInfo(pokemon pokeapi.Pokemon) {
+	fmt.Println("Name: " + pokemon.Name)
+	fmt.Println("Height: " + fmt.Sprint(pokemon.Height))
+	fmt.Println("Weight: " + fmt.Sprint(pokemon.Weight))
+
+	fmt.Println("Stats:")
+	for _, val := range pokemon.Stats {
+		fmt.Println("-" + val.Stat.Name + ": " + fmt.Sprint(val.BaseStat))
+	}
+
+	fmt.Println("Types:")
+	for _, val := range pokemon.Types {
+		fmt.Println("-" + val.Type.Name)
+	}
 }
