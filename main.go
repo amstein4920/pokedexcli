@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"sort"
 	"strings"
@@ -20,6 +21,7 @@ type cliCommand struct {
 
 type config struct {
 	pokeClient          pokeapi.Client
+	caughtPokemon       map[string]pokeapi.Pokemon
 	nextLocationUrl     *string
 	previousLocationUrl *string
 }
@@ -27,7 +29,8 @@ type config struct {
 func main() {
 	pokeClient := pokeapi.NewClient(5*time.Second, 5*time.Minute)
 	cfg := &config{
-		pokeClient: pokeClient,
+		caughtPokemon: map[string]pokeapi.Pokemon{},
+		pokeClient:    pokeClient,
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -78,6 +81,11 @@ func getCommands() map[string]cliCommand {
 			name:        "explore",
 			description: "Explore given location and display Pokemon within it",
 			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Attempt to catch given Pokemon and add to your personal Pokedex",
+			callback:    commandCatch,
 		},
 	}
 }
@@ -149,6 +157,29 @@ func commandExplore(config *config, args ...string) error {
 
 	for _, encounter := range location.PokemonEncounters {
 		fmt.Println(encounter.Pokemon.Name)
+	}
+
+	return nil
+}
+
+func commandCatch(config *config, args ...string) error {
+	if len(args) != 1 {
+		return errors.New("no pokemon argument provided")
+	}
+
+	pokemon, err := config.pokeClient.GetPokemon(args[0])
+	if err != nil {
+		return err
+	}
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	is_caught := r.Intn(300) >= pokemon.BaseExperience
+
+	if is_caught {
+		fmt.Println(pokemon.Name + " has been caught and added to your Pokedex!")
+		config.caughtPokemon[pokemon.Name] = pokemon
+	} else {
+		fmt.Println(pokemon.Name + " was not caught!")
 	}
 
 	return nil

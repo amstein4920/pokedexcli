@@ -35,18 +35,24 @@ func (c *Client) ListLocations(nextUrl *string) (PokeLocations, error) {
 		return locations, nil
 	}
 
-	res, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		fmt.Println("Error loading locations")
+		fmt.Println("Error forming request")
 		return PokeLocations{}, err
 	}
 
-	body, err := io.ReadAll(res.Body)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		fmt.Println("Error getting location response")
+		return PokeLocations{}, err
+	}
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Error reading locations")
 		return PokeLocations{}, err
 	}
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
 	locations := PokeLocations{}
 	err = json.Unmarshal(body, &locations)
